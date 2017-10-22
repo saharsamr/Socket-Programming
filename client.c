@@ -1,22 +1,7 @@
 #include <stdio.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-
-struct InAddr {
-  unsigned long sAddr;
-};
-
-struct SocketAddrIn {
-  short sinFamily;
-  unsigned short sinPort;
-  struct InAddr sinAddr;
-  char sinZero[8];
-};
-
-struct socketAddr {
-  unsigned short saFamily;
-  char saData[14];
-};
+#include "serverStructs.h"
 
 int main(int argc, char* argv[]){
 
@@ -28,7 +13,7 @@ int main(int argc, char* argv[]){
   struct SocketAddrIn server;
   server.sinAddr.sAddr = inet_addr("127.0.0.1");
   server.sinFamily = AF_INET;
-  server.sinPort = htons(80);
+  server.sinPort = htons(8000);
 
   if (connect(socketDesc, &server, sizeof(server)) < 0)
     write(1, "Connection refused.\n", 20);
