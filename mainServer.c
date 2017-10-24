@@ -3,6 +3,12 @@
 #include <arpa/inet.h>
 #include "serverStructs.h"
 
+// struct filesdata{
+//   int partNumber;
+//   struct InAddr clientIP;
+//   unsigned short clientPort;
+// };
+
 int main(int argc, char* argv[]){
 
   int socketDesc;
