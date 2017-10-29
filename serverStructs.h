@@ -1,15 +1,15 @@
-struct InAddr {
+struct in_addr {
   unsigned long sAddr;
 };
 
-struct SocketAddrIn {
+struct sockaddr_in {
   short sinFamily;
   unsigned short sinPort;
-  struct InAddr sinAddr;
+  struct in_addr sinAddr;
   char sinZero[8];
 };
 
-struct socketAddr {
+struct  sockaddr {
   unsigned short saFamily;
   char saData[14];
 };
