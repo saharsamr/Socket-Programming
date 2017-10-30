@@ -55,15 +55,11 @@ int main(int argc, char* argv[]){
   }
 
   char* sendTheFile(char* fileName){
-    // char* name = strtok(fileName, ":");
-    // char* offset = strtok(NULL, ":");
-    // printf("%s\n%s\n",name, offset);
     int FILE_FD = open(fileName, O_RDONLY);
-    // lseek(name, atoi(offset), 0);
     char *text = malloc(1024*1024 * sizeof(char));
     if (read(FILE_FD, text, 1024*1024) < 0)
       write(1, "couldn't send to client.\n", 25);
-    // write(1, text, 1024);
+      close(FILE_FD);
     return text;
   }
 
@@ -188,21 +184,16 @@ int main(int argc, char* argv[]){
           memset(response, '\0', 1024);
           buffer[valread] = '\0';
           write(1, buffer, strlen(buffer));
-          // strcpy(response, "response\n");
           char* data = sendTheFile(buffer);
 
           int len = strlen(data);
 
           sendall(sd, data, &len);
           free(data);
-          send(sd, "end of file.", 13, 0);
-
-          // if (send(sd, sendTheFile(buffer), 1024, 0) < 0)
-          //   write(2, "sending response to client failed.\n", 35);
+          send(sd, "end of file.", strlen("end of file."), 0);
         }
       }
     }
   }
-
   return 0;
 }

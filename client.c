@@ -58,14 +58,10 @@ int main(int argc, char* argv[]){
       write(2, "message did not recieve from server.\n", 37);
     else{
       write(1, buffer, strlen(buffer));
-      /////////////////////////////////////////////////////////////
-      printf("\n----------\n");
       char*  chunkNum;
       chunkNum = strtok(buffer, "#");
-      write(1, "\n", 1);
-      write(1, chunkNum, strlen(chunkNum));
 
-      // while(chunkNum != NULL){
+      while(chunkNum != NULL){
         char* IP = strtok(NULL, "#");
         char* port = strtok(NULL, "#");
          printf("%s\n", IP);
@@ -89,8 +85,6 @@ int main(int argc, char* argv[]){
         memset(fName, '\0', 100);
         strcpy(fName, fileData);
 
-        // strcat(fileData, ":0");
-
         if (send(fileServerSocket, fileData, strlen(fileData), 0) < 0)
           write(1, "Sending failed.\n", 17);
 
@@ -99,30 +93,31 @@ int main(int argc, char* argv[]){
           else{
             char* newFileName[100];
             memset(newFileName, '\0', 100);
-            // printf("%s\n", clientPort);
             strcat(newFileName, "./");
             strcat(newFileName, clientPort);
             strcat(newFileName, fName);
-            // printf("%s\n", newFileName);
-            // write(1, buffer, strlen(buffer));
             int file_fd = open(newFileName, O_CREAT | O_APPEND | O_WRONLY);
             if(file_fd < 0)
               write(1, "error\n", 6);
             write(file_fd, buffer, strlen(buffer));
-            int i = 1;
-            printf("part: %d\n", i);
 
-            while(strcmp(buffer, "end of file.") != 0){
+            while(TRUE){
+              memset(buffer, '\0', 1024);
               if (valread = read(fileServerSocket, buffer, 1024) == 0)
                 write(2, "message did not recieve from server.\n", 37);
-
               write(file_fd, buffer, strlen(buffer));
-              i++;
-              printf("part: %d\n", i);
+              if(strstr(buffer, "end of file.") == NULL)
+                printf("cn\n");
+
+              else{
+                printf("done\n");
+                break;
+              }
             }
+            close(file_fd);
 
         chunkNum = strtok(NULL, "#");
-      // }
+      }
     }
   }
 }
