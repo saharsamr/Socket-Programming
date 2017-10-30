@@ -8,41 +8,81 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/time.h>
+#include "linkedList.h"
 
 #define TRUE   1
 #define FALSE  0
 #define MAX_CLIENTS 50
 
-typedef struct Node Node;
-
-typedef struct Node{
-  int chunkNum;
-  char serverIP[16], serverPort[5];
-  Node* next;
-};
-
 typedef struct FileData{
-  char* fileName[100];
-  Node* listHead;
+  char fileName[100];
+  node* listHead;
 } FileData;
 
-int isFileData(char* buffer){
-  if (strstr(buffer, "file server: file name:#") == buffer){
+int findFile(char* fileName, FileData* filesdata){
+  int i;
+  for (i = 0; i < 50; i++){
+    if (&filesdata[i] != NULL && strcmp(fileName, filesdata[i].fileName) == 0)
+      return i;
+  }
+  return -1;
+}
+
+int isFileData(char* buffer, FileData* filesdata, int* filesDataCount){
+  char* token; int index;
+  char* chunkNum = (char*)malloc(3*sizeof(char)); char* IP = (char*)malloc(16*sizeof(char)); char* port = (char*)malloc(5*sizeof(char));
+  FileData* newFile = (FileData*)malloc(sizeof(FileData));
+  if (strcmp(token = strtok(buffer, "#"), "file server") == 0){
+      memset(newFile->fileName, '\0', 100);
+      strcpy(newFile->fileName, strtok(NULL, "#"));
+      memset(chunkNum, '\0', 3);
+      memset(IP, '\0', 16);
+      memset(port, '\0', 5);
+    chunkNum = strtok(NULL, "#"); IP = strtok(NULL, "#"); port = strtok(NULL, "#");
+    if (index = findFile(newFile->fileName, filesdata) < 0){
+      node* newNode = (node*)malloc(sizeof(node));
+      memset(newNode->chunkNum, '\0', 3);
+      memset(newNode->serverIP, '\0', 16);
+      memset(newNode->serverPort, '\0', 5);
+      strcpy(newNode->chunkNum, chunkNum); strcpy(newNode->serverIP, IP); strcpy(newNode->serverPort, port);
+
+      newFile->listHead = newNode;
+      filesdata[*filesDataCount] = *newFile;
+      (*filesDataCount) += 1;
+    }
+    else{
+      filesdata[index].listHead = append(filesdata[index].listHead, chunkNum, IP, port);
+      filesdata[index].listHead = insertion_sort(filesdata[index].listHead);
+    }
     write(1, "file data recieved.\n", 20);
     return TRUE;
   }
   return FALSE;
 }
 
-char* parseClientMessage(char* buffer){
-  if (strcmp(buffer, "file server: first connection.\n") == 0)
-    return "main server: connection accepted from server.\n";
-  else if (isFileData(buffer))
+char* isClientReq(char* buffer, FileData* filesdata){
+  int index = findFile(buffer, filesdata);
+  node* temp = filesdata[index].listHead;
+  char* data = malloc(1024);
+  memset(data, '\0', 1024);
+  while (temp != NULL){
+    strcat(data, "#");
+    strcat(data, temp->chunkNum);
+    strcat(data, "#");
+    strcat(data, temp->serverIP);
+    strcat(data, "#");
+    strcat(data, temp->serverPort);
+    temp = temp->next;
+  }
+  return data;
+}
+
+char* parseClientMessage(char* buffer, FileData* filesdata, int* filesDataCount){
+  char* response = malloc(1024);
+  if (isFileData(buffer, filesdata, filesDataCount))
     return "file data added.\n";
-  else if (strcmp(buffer, "file server: finished.\n") == 0)
-    return "nice job. bye.\n";
   else
-    return "that wasn't an acceptable request.\n";
+    return isClientReq(buffer, filesdata);
 }
 
 int main(int argc , char *argv[]){
@@ -90,7 +130,12 @@ int main(int argc , char *argv[]){
   addrlen = sizeof(address);
   write(1, "Waiting for connections...\n", 27);
 
+  FileData* filesInServers =(FileData*) malloc(50*sizeof(FileData));
+  int filesDataCount = 0;
+
   while(TRUE){
+    printf("files number: %d\n", filesDataCount);
+
     FD_ZERO(&readfds);
 
     FD_SET(master_socket, &readfds);
@@ -134,7 +179,7 @@ int main(int argc , char *argv[]){
         else{
           buffer[valread] = '\0';
           write(1, buffer, strlen(buffer));
-          strcpy(response, parseClientMessage(buffer));
+          strcpy(response, parseClientMessage(buffer, filesInServers, &filesDataCount));
           if (send(sd, response, strlen(response), 0) < 0)
             write(2, "sending response to client failed.\n", 35);
         }
