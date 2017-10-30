@@ -58,14 +58,20 @@ int main(int argc, char* argv[]){
       write(2, "message did not recieve from server.\n", 37);
     else{
       write(1, buffer, strlen(buffer));
-      char*  chunkNum;
-      chunkNum = strtok(buffer, "#");
-
+      char serversData [50][16];
+      int numOfServers = 0, i = 0;
+      memset(serversData, '\0', 50*16);
+      char* chunkNum = strtok(buffer, "#");
       while(chunkNum != NULL){
-        char* IP = strtok(NULL, "#");
-        char* port = strtok(NULL, "#");
-         printf("%s\n", IP);
-         printf("%s\n", port);
+        strcpy(serversData[i], strtok(NULL, "#"));
+        i++;
+        strcpy(serversData[i], strtok(NULL, "#"));
+        i++;
+        chunkNum = strtok(NULL, "#");
+        numOfServers++;
+      }
+
+      for(int j = 0; j < numOfServers; j++){
 
         int fileServerSocket = socket(AF_INET, SOCK_STREAM, 0);
         if (fileServerSocket == -1){
@@ -76,7 +82,7 @@ int main(int argc, char* argv[]){
         struct sockaddr_in fileServer;
         fileServer.sin_family = AF_INET;
         fileServer.sin_addr.s_addr = inet_addr("127.0.0.1");
-        fileServer.sin_port= htons(atoi(port));
+        fileServer.sin_port= htons(atoi(serversData[j*2+1]));
 
         if (connect(fileServerSocket, &fileServer, sizeof(fileServer)) < 0)
           write(1, "Connection error.\n", 16);
@@ -116,7 +122,8 @@ int main(int argc, char* argv[]){
             }
             close(file_fd);
 
-        chunkNum = strtok(NULL, "#");
+        // chunkNum = strtok(NULL, "#");
+        // printf("%s\n", chunkNum);
       }
     }
   }
