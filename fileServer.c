@@ -12,16 +12,18 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#define MAX_CLIENT_NUM 50
 #define TRUE 1
 #define FALSE 0
+#define MAX_CLIENTS 50
+#define MAX_TRANSFER_BYTES 1024
+#define MAX_IP_LEN 16
+#define MAX_PORT_LEN 5
 
 char fileServerIP[16], fileServerPort[5];
 
-int sendall(int s, char *buf, int *len)
-{
-    int total = 0;        // how many bytes we've sent
-    int bytesleft = *len; // how many we have left to send
+int sendall(int s, char *buf, int *len){
+    int total = 0;
+    int bytesleft = *len;
     int n;
     int i = 1;
     while(total < *len) {
@@ -30,22 +32,20 @@ int sendall(int s, char *buf, int *len)
         total += n;
         bytesleft -= n;
     }
-
-    *len = total; // return number actually sent here
-
-    return n==-1?-1:0; // return -1 on failure, 0 on success
+    *len = total;
+    return n==-1?-1:0;
 }
 
 int main(int argc, char* argv[]){
 
   int valread, mainServerSocket;
-  char buffer[1025], response[1024];
+  char buffer[MAX_TRANSFER_BYTES], response[MAX_TRANSFER_BYTES];
 
   write(1, "Enter this file server ip address:\n",35);
-  read(0, fileServerIP, 18);
+  read(0, fileServerIP, MAX_IP_LEN);
   *strstr(fileServerIP, "\n") = '\0';
   write(1, "Enter file server port:\n", 24);
-  read(0, fileServerPort, 5);
+  read(0, fileServerPort, MAX_PORT_LEN);
   *strstr(fileServerPort, "\n") = '\0';
 
   mainServerSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -56,8 +56,8 @@ int main(int argc, char* argv[]){
 
   char* sendTheFile(char* fileName){
     int FILE_FD = open(fileName, O_RDONLY);
-    char *text = malloc(1024*1024 * sizeof(char));
-    if (read(FILE_FD, text, 1024*1024) < 0)
+    char *text = malloc(MAX_TRANSFER_BYTES*MAX_TRANSFER_BYTES * sizeof(char));
+    if (read(FILE_FD, text, MAX_TRANSFER_BYTES*MAX_TRANSFER_BYTES) < 0)
       write(1, "couldn't send to client.\n", 25);
       close(FILE_FD);
     return text;
@@ -71,8 +71,8 @@ int main(int argc, char* argv[]){
   if (connect(mainServerSocket, &mainServer, sizeof(mainServer)) < 0)
     write(1, "Connection error.\n", 16);
 //////////////TODO: tabe kon ino :)))
-  char fileData[1025], temp[100];
-  memset(fileData, '\0', 1025);
+  char fileData[MAX_TRANSFER_BYTES], temp[100];
+  memset(fileData, '\0', MAX_TRANSFER_BYTES);
   memset(temp, '\0', 100);
   write(1, "Enter file name:\n", 17);
   read(0, temp, 100);
@@ -89,27 +89,26 @@ int main(int argc, char* argv[]){
   strcat(fileData, fileServerIP);
   strcat(fileData, "#");
   strcat(fileData, fileServerPort);
-  // write(1, fileData, strlen(fileData));
 
   if (send(mainServerSocket, fileData, strlen(fileData), 0) < 0)
     write(1, "Sending failed.\n", 17);
 
-    memset(buffer, '\0', 1024);
-    if (valread = read(mainServerSocket, buffer, 1024) == 0)
+    memset(buffer, '\0', MAX_TRANSFER_BYTES);
+    if (valread = read(mainServerSocket, buffer, MAX_TRANSFER_BYTES) == 0)
       write(2, "message did not recieve from server.\n", 37);
     else
       write(1, buffer, strlen(buffer));
 /////////////////////////////////////////////////////////////////////////
 
   int opt = TRUE;
-  int fileServerSocket, new_socket, client_socket[50], activity;
-  int addrlen, sd, max_sd, i, max_clients = MAX_CLIENT_NUM;
+  int fileServerSocket, new_socket, client_socket[MAX_CLIENTS], activity;
+  int addrlen, sd, max_sd, i;
   struct sockaddr_in address;
-  char port[5], ip[16];
+  char port[MAX_PORT_LEN], ip[MAX_IP_LEN];
 
   fd_set readfds;
 
-  for (i = 0; i < max_clients; i++)
+  for (i = 0; i < MAX_CLIENTS; i++)
     client_socket[i] = 0;
 
   if ((fileServerSocket = socket(AF_INET , SOCK_STREAM , 0)) == 0){
@@ -145,7 +144,7 @@ int main(int argc, char* argv[]){
     FD_SET(fileServerSocket, &readfds);
     max_sd = fileServerSocket;
 
-    for ( i = 0 ; i < max_clients ; i++){
+    for ( i = 0 ; i < MAX_CLIENTS ; i++){
       sd = client_socket[i];
       if(sd > 0)
         FD_SET( sd , &readfds);
@@ -165,23 +164,23 @@ int main(int argc, char* argv[]){
 
       write(1, "connection accepted.\n", 21);
 
-      for (i = 0; i < max_clients; i++)
+      for (i = 0; i < MAX_CLIENTS; i++)
         if( client_socket[i] == 0 ){
           client_socket[i] = new_socket;
           break;
         }
     }
 
-    for (i = 0; i < max_clients; i++){
+    for (i = 0; i < MAX_CLIENTS; i++){
       sd = client_socket[i];
       if (FD_ISSET(sd, &readfds)){
-        memset(buffer, '\0', 1024);
-        if ((valread = recv(sd ,buffer, 1024, 0)) == 0){
+        memset(buffer, '\0', MAX_TRANSFER_BYTES);
+        if ((valread = recv(sd ,buffer, MAX_TRANSFER_BYTES, 0)) == 0){
           close( sd );
           client_socket[i] = 0;
         }
         else{
-          memset(response, '\0', 1024);
+          memset(response, '\0', MAX_TRANSFER_BYTES);
           buffer[valread] = '\0';
           write(1, buffer, strlen(buffer));
           char* data = sendTheFile(buffer);

@@ -13,6 +13,9 @@
 #define TRUE   1
 #define FALSE  0
 #define MAX_CLIENTS 50
+#define MAX_TRANSFER_BYTES 1024
+#define MAX_IP_LEN 16
+#define MAX_PORT_LEN 5
 
 typedef struct FileData{
   char fileName[100];
@@ -21,7 +24,7 @@ typedef struct FileData{
 
 int findFile(char* fileName, FileData* filesdata){
   int i;
-  for (i = 0; i < 50; i++){
+  for (i = 0; i < MAX_CLIENTS; i++){
     if (&filesdata[i] != NULL && strcmp(fileName, filesdata[i].fileName) == 0)
       return i;
   }
@@ -36,14 +39,14 @@ int isFileData(char* buffer, FileData* filesdata, int* filesDataCount){
       memset(newFile->fileName, '\0', 100);
       strcpy(newFile->fileName, strtok(NULL, "#"));
       memset(chunkNum, '\0', 3);
-      memset(IP, '\0', 16);
-      memset(port, '\0', 5);
+      memset(IP, '\0', MAX_IP_LEN);
+      memset(port, '\0', MAX_PORT_LEN);
     chunkNum = strtok(NULL, "#"); IP = strtok(NULL, "#"); port = strtok(NULL, "#");
     if (index = findFile(newFile->fileName, filesdata) < 0){
       node* newNode = (node*)malloc(sizeof(node));
       memset(newNode->chunkNum, '\0', 3);
-      memset(newNode->serverIP, '\0', 16);
-      memset(newNode->serverPort, '\0', 5);
+      memset(newNode->serverIP, '\0', MAX_IP_LEN);
+      memset(newNode->serverPort, '\0', MAX_PORT_LEN);
       strcpy(newNode->chunkNum, chunkNum); strcpy(newNode->serverIP, IP); strcpy(newNode->serverPort, port);
 
       newFile->listHead = newNode;
@@ -63,8 +66,8 @@ int isFileData(char* buffer, FileData* filesdata, int* filesDataCount){
 char* isClientReq(char* buffer, FileData* filesdata){
   int index = findFile(buffer, filesdata);
   node* temp = filesdata[index].listHead;
-  char* data = malloc(1024);
-  memset(data, '\0', 1024);
+  char* data = malloc(MAX_TRANSFER_BYTES);
+  memset(data, '\0', MAX_TRANSFER_BYTES);
   while (temp != NULL){
     strcat(data, "#");
     strcat(data, temp->chunkNum);
@@ -78,7 +81,7 @@ char* isClientReq(char* buffer, FileData* filesdata){
 }
 
 char* parseClientMessage(char* buffer, FileData* filesdata, int* filesDataCount){
-  char* response = malloc(1024);
+  char* response = malloc(MAX_TRANSFER_BYTES);
   if (isFileData(buffer, filesdata, filesDataCount))
     return "file data added.\n";
   else
@@ -88,19 +91,21 @@ char* parseClientMessage(char* buffer, FileData* filesdata, int* filesDataCount)
 int main(int argc , char *argv[]){
 
   int opt = TRUE;
-  int master_socket, new_socket, client_socket[50], activity;
-  int addrlen, max_clients = MAX_CLIENTS, i, valread, sd, max_sd;
+  int master_socket, new_socket, client_socket[MAX_CLIENTS], activity;
+  int addrlen, i, valread, sd, max_sd;
   struct sockaddr_in address;
-  char buffer[1025], response[1025], port[5], ip[16];
+  char buffer[MAX_TRANSFER_BYTES], response[MAX_TRANSFER_BYTES], port[MAX_PORT_LEN], ip[MAX_IP_LEN];
 
   write(1, "Enter main server ip address:\n", 30);
   read(0, ip, sizeof(ip));
+  *strstr(ip, "\n") = '\0';
   write(1, "Enter main server port:\n", 24);
   read(0, port, sizeof(port));
+  *strstr(port, "\n") = '\0';
 
   fd_set readfds;
 
-  for (i = 0; i < max_clients; i++)
+  for (i = 0; i < MAX_CLIENTS; i++)
     client_socket[i] = 0;
 
   if ((master_socket = socket(AF_INET , SOCK_STREAM , 0)) == 0){
@@ -115,14 +120,14 @@ int main(int argc , char *argv[]){
 
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = INADDR_ANY;
-  address.sin_port = htons(atoi("8888"));
+  address.sin_port = htons(atoi(port));
 
   if (bind(master_socket, (struct sockaddr *)&address, sizeof(address)) < 0){
     write(2, "bind failed", 11);
     exit(EXIT_FAILURE);
   }
 
-  if (listen(master_socket, 50) < 0){
+  if (listen(master_socket, MAX_CLIENTS) < 0){
     write(2, "listen error", 12);
     exit(EXIT_FAILURE);
   }
@@ -130,7 +135,7 @@ int main(int argc , char *argv[]){
   addrlen = sizeof(address);
   write(1, "Waiting for connections...\n", 27);
 
-  FileData* filesInServers =(FileData*) malloc(50*sizeof(FileData));
+  FileData* filesInServers =(FileData*) malloc(MAX_CLIENTS*sizeof(FileData));
   int filesDataCount = 0;
 
   while(TRUE){
@@ -141,7 +146,7 @@ int main(int argc , char *argv[]){
     FD_SET(master_socket, &readfds);
     max_sd = master_socket;
 
-    for ( i = 0 ; i < max_clients ; i++){
+    for ( i = 0 ; i < MAX_CLIENTS ; i++){
       sd = client_socket[i];
       if(sd > 0)
         FD_SET( sd , &readfds);
@@ -161,18 +166,18 @@ int main(int argc , char *argv[]){
 
       write(1, "connection accepted.\n", 21);
 
-      for (i = 0; i < max_clients; i++)
+      for (i = 0; i < MAX_CLIENTS; i++)
         if( client_socket[i] == 0 ){
           client_socket[i] = new_socket;
           break;
         }
     }
 
-    for (i = 0; i < max_clients; i++){
+    for (i = 0; i < MAX_CLIENTS; i++){
       sd = client_socket[i];
       if (FD_ISSET(sd, &readfds)){
-        memset(buffer, '\0', 1024);
-        if ((valread = recv(sd ,buffer, 1024, 0)) == 0){
+        memset(buffer, '\0', MAX_TRANSFER_BYTES);
+        if ((valread = recv(sd ,buffer, MAX_TRANSFER_BYTES, 0)) == 0){
           close( sd );
           client_socket[i] = 0;
         }

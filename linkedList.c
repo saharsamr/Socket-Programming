@@ -3,6 +3,8 @@
 #include <string.h>
 #include "linkedList.h"
 
+#define MAX_TRANSFER_BYTES 1024
+
 typedef void (*callback)(node* data);
 
 node* create(char chunkNum[3], char serverIP[16], char serverPort[5], node* next){
@@ -26,12 +28,6 @@ node* append(node* head, char chunkNum[3], char serverIP[16], char serverPort[5]
         cursor = cursor->next;
     node* new_node =  create(chunkNum, serverIP, serverPort, NULL);
     cursor->next = new_node;
-    return head;
-}
-
-node* prepend(node* head,char chunkNum[3], char serverIP[16], char serverPort[5]) {
-    node* new_node = create(chunkNum, serverIP, serverPort, head);
-    head = new_node;
     return head;
 }
 
@@ -62,39 +58,4 @@ node* insertion_sort(node* head){
         }
     }
     return head;
-}
-
-void printList(char fileName[], node* head){
-  node* temp = head;
-  if (head != NULL){
-    write(1, "file name: ", 11);
-    write(1, fileName, strlen(fileName));
-    write(1, "\n", 1);
-  }
-  while (temp != NULL)
-    printf("chunk num:%s, IP:%s, port:%s\n", temp->chunkNum,
-              temp->serverIP, temp->serverPort);
-    temp = temp->next;
-}
-
-char* getListData(node* head){
-  node* temp = head;
-  char* data = malloc(1024);
-  strcpy(data, temp->chunkNum);
-  strcat(data, "#");
-  strcat(data, temp->serverIP);
-  strcat(data, "#");
-  strcat(data, temp->serverPort);
-  strcat(data, "#");
-  temp = head->next;
-  while (temp != NULL){
-    strcat(data, temp->chunkNum);
-    strcat(data, "#");
-    strcat(data, temp->serverIP);
-    strcat(data, "#");
-    strcat(data, temp->serverPort);
-    strcat(data, "#");
-    temp = temp->next;
-  }
-  return data;
 }

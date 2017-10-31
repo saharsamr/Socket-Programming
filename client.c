@@ -11,22 +11,25 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#define MAX_CLIENT_NUM 50
 #define TRUE 1
 #define FALSE 0
+#define MAX_CLIENTS 50
+#define MAX_TRANSFER_BYTES 1024
+#define MAX_IP_LEN 16
+#define MAX_PORT_LEN 5
 
-char clientIP[16], clientPort[5];
+char clientIP[MAX_IP_LEN], clientPort[MAX_PORT_LEN];
 
 int main(int argc, char* argv[]){
 
   int valread, mainServerSocket;
-  char buffer[1025], response[1025];
+  char buffer[MAX_TRANSFER_BYTES], response[MAX_TRANSFER_BYTES];
 
   write(1, "Enter this client ip address:\n",35);
-  read(0, clientIP, 18);
+  read(0, clientIP, MAX_IP_LEN);
   *strstr(clientIP, "\n") = '\0';
   write(1, "Enter client port:\n", 24);
-  read(0, clientPort, 5);
+  read(0, clientPort, MAX_PORT_LEN);
   *strstr(clientPort, "\n") = '\0';
 
   mainServerSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -43,8 +46,8 @@ int main(int argc, char* argv[]){
   if (connect(mainServerSocket, &mainServer, sizeof(mainServer)) < 0)
     write(1, "Connection error.\n", 16);
 
-  char fileData[1025], temp[100];
-  memset(fileData, 0, 1025);
+  char fileData[MAX_TRANSFER_BYTES], temp[100];
+  memset(fileData, 0, MAX_TRANSFER_BYTES);
   memset(temp, 0, 100);
   write(1, "Enter file name you want:\n", 26);
   read(0, temp, 100);
@@ -54,13 +57,13 @@ int main(int argc, char* argv[]){
   if (send(mainServerSocket, fileData, strlen(fileData), 0) < 0)
     write(1, "Sending failed.\n", 17);
 
-    if (valread = read(mainServerSocket, buffer, 1024) == 0)
+    if (valread = read(mainServerSocket, buffer, MAX_TRANSFER_BYTES) == 0)
       write(2, "message did not recieve from server.\n", 37);
     else{
       write(1, buffer, strlen(buffer));
-      char serversData [50][16];
+      char serversData [MAX_CLIENTS][MAX_IP_LEN];
       int numOfServers = 0, i = 0;
-      memset(serversData, '\0', 50*16);
+      memset(serversData, '\0', MAX_IP_LEN*MAX_CLIENTS);
       char* chunkNum = strtok(buffer, "#");
       while(chunkNum != NULL){
         strcpy(serversData[i], strtok(NULL, "#"));
@@ -94,7 +97,7 @@ int main(int argc, char* argv[]){
         if (send(fileServerSocket, fileData, strlen(fileData), 0) < 0)
           write(1, "Sending failed.\n", 17);
 
-          if (valread = read(fileServerSocket, buffer, 1024) == 0)
+          if (valread = read(fileServerSocket, buffer, MAX_TRANSFER_BYTES) == 0)
             write(2, "message did not recieve from server.\n", 37);
           else{
             char* newFileName[100];
@@ -108,22 +111,14 @@ int main(int argc, char* argv[]){
             write(file_fd, buffer, strlen(buffer));
 
             while(TRUE){
-              memset(buffer, '\0', 1024);
-              if (valread = read(fileServerSocket, buffer, 1024) == 0)
+              memset(buffer, '\0', MAX_TRANSFER_BYTES);
+              if (valread = read(fileServerSocket, buffer, MAX_TRANSFER_BYTES) == 0)
                 write(2, "message did not recieve from server.\n", 37);
               write(file_fd, buffer, strlen(buffer));
-              if(strstr(buffer, "end of file.") == NULL)
-                printf("cn\n");
-
-              else{
-                printf("done\n");
+              if(strstr(buffer, "end of file.") != NULL)
                 break;
-              }
             }
             close(file_fd);
-
-        // chunkNum = strtok(NULL, "#");
-        // printf("%s\n", chunkNum);
       }
     }
   }
